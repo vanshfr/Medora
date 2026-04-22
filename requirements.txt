@@ -1,0 +1,23 @@
+# Web Framework & Environment
+streamlit
+python-dotenv
+
+# AI & Machine Learning (CPU Inference)
+torch
+transformers
+accelerate
+qwen-vl-utils
+
+# Medical Image Processing
+pydicom
+nibabel
+numpy
+Pillow
+tifffile
+opencv-python-headless
+
+# Data Visualization
+plotly
+
+# PDF Generation
+fpdf2
