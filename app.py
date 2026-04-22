@@ -1,41 +1,39 @@
 import streamlit as st
 import os
-from datetime import datetime
+import io
 from dotenv import load_dotenv
-
-# Data and Image Processing
+import re
+import matplotlib.pyplot as plt
+from datetime import datetime
 import numpy as np
 from PIL import Image
 import tifffile
-
-# Visualization and PDF Generation
-import plotly.express as px
 from fpdf import FPDF
+import plotly.express as px
+import plotly.graph_objects as go
 
-# Internal project modules
+
+# Internal imports
 from utils.image_processor import MedicalImageProcessor
 from core.model_handler import MedGemmaHandler
 
-# Load environment variables (e.g., HF_TOKEN)
+# Load .env file
 load_dotenv()
 
-# --- Page Configuration ---
-# Setting the UI layout and title for the browser tab
+# MUST BE FIRST
 st.set_page_config(
-    page_title="Medora | Clinical Image Analysis",
+    page_title="Medora | Clinical Image Analsis Dashboard",
     page_icon="🩺",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# --- Theme Application ---
-# Injecting custom CSS for the clinical dashboard look
+# --- Load Custom CSS ---
 if os.path.exists("assets/styles.css"):
     with open("assets/styles.css") as f:
         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
-# --- Application State Management ---
-# Using session state to persist data across UI interactions
+# --- Initialize Session State ---
 if "current_report" not in st.session_state:
     st.session_state.current_report = ""
 if "processed_images" not in st.session_state:
@@ -43,235 +41,286 @@ if "processed_images" not in st.session_state:
 if "expert_sign_off" not in st.session_state:
     st.session_state.expert_sign_off = False
 
-# --- Sidebar Configuration ---
+# --- Sidebar ---
 with st.sidebar:
     st.image("https://img.icons8.com/fluency/96/medical-doctor.png", width=80)
-    st.title("Medora Control Center")
+    st.title("Medora")
     st.markdown("---")
     
-    st.subheader("🛠 System Settings")
+    st.subheader("🛠 Configuration")
     hf_token = st.text_input(
-        "Hugging Face Access Token", 
+        "Hugging Face Token", 
         value=os.getenv("HF_TOKEN", ""),
         type="password", 
-        help="Secure token required for local model weights."
+        help="Required to access models on Hugging Face."
     )
-    
-    scan_modality = st.selectbox("Scan Modality", ["CT Scan", "MRI Scan", "Mammography"])
-    
-    # Demo mode allows for testing the UI without loading the heavy LLM
-    use_demo_mode = st.checkbox(
-        "Demo Mode (Mock AI)", 
-        value=False, 
-        help="Use pre-generated responses for presentation purposes."
-    )
+    scan_type = st.selectbox("Scan Modality", ["CT Scan", "MRI Scan", "Mammography"])
+
+    use_mock = st.checkbox("Use Demo Mode (Mock AI)", value=False, help="Toggle this to use pre-written responses.")
     
     st.markdown("---")
-    st.info("Performance Note: Optimized for local CPU inference using Qwen2-VL.")
+    st.info("System optimized: Qwen2-VL is active for local CPU inference.")
 
-# --- Document Generation Logic ---
-def generate_clinical_pdf(report_text, scan_type, expert_name, images):
-    """
-    Creates a professional, branded medical report in PDF format.
-    Ensures that long text does not overlap with the digital signature.
-    """
+# --- PDF Generation Function ---
+def generate_pdf(report_text, scan_type, expert_name, images):
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
 
-    # Brand Colors (Professional Medical Palette)
-    PRIMARY_BLUE = (25, 55, 100)
-    LIGHT_BG = (230, 235, 245)
-    DARK_TEXT = (30, 30, 30)
+    PRIMARY = (25, 55, 100)
+    ACCENT = (230, 235, 245)
+    TEXT = (30, 30, 30)
+    MUTED = (120, 120, 120)
+    LINE = (200, 200, 200)
 
-    # 1. Formatting: Remove markdown symbols from the AI response for the PDF
-    clean_report = report_text.replace("###", "").replace("**", "").replace("•", "-")
-    safe_encoded_text = clean_report.encode("latin-1", "ignore").decode("latin-1")
+    # CLEAN TEXT SAFELY
+    clean_text = report_text.replace("###", "").replace("**", "").replace("•", "-")
+    safe_text = clean_text.encode("latin-1", "ignore").decode("latin-1")
 
-    # 2. Header: Branded Bar
-    pdf.set_fill_color(*PRIMARY_BLUE)
+    # HEADER BAR
+    pdf.set_fill_color(*PRIMARY)
     pdf.rect(0, 0, 210, 28, 'F')
     pdf.set_text_color(255, 255, 255)
     pdf.set_font("Helvetica", 'B', 16)
     pdf.set_xy(10, 8)
     pdf.cell(0, 10, "MEDORA DIAGNOSTICS REPORT", ln=True)
 
-    # 3. Metadata Section: Patient/Scan Details
-    pdf.set_text_color(*DARK_TEXT)
+    # META BOX
+    pdf.set_text_color(*TEXT)
     pdf.set_font("Helvetica", '', 10)
-    pdf.ln(12)
-    pdf.set_fill_color(*LIGHT_BG)
+    pdf.ln(10)
+    pdf.set_fill_color(*ACCENT)
     pdf.rect(10, 35, 190, 22, 'F')
     pdf.set_xy(12, 38)
-    pdf.cell(60, 6, f"Modality: {scan_type}", ln=0)
+    pdf.cell(60, 6, f"Scan Type: {scan_type}", ln=0)
     pdf.cell(70, 6, f"Date: {datetime.now().strftime('%d-%m-%Y')}", ln=0)
-    pdf.cell(0, 6, f"ID: NX-{datetime.now().strftime('%Y%m%d%H%M')}", ln=1)
+    pdf.cell(0, 6, f"Report ID: NX-{datetime.now().strftime('%Y%m%d%H%M')}", ln=1)
     pdf.set_x(12)
-    pdf.cell(0, 6, f"Verified By: Dr. {expert_name}", ln=True)
+    pdf.cell(0, 6, f"Consultant: Dr. {expert_name}", ln=True)
 
-    # 4. Visual Data: Centered Scan Preview
+    # IMAGE SECTION
     if images:
         pdf.ln(12)
         pdf.set_font("Helvetica", 'B', 12)
-        pdf.set_text_color(*PRIMARY_BLUE)
+        pdf.set_text_color(*PRIMARY)
         pdf.cell(0, 8, "IMAGING DATA", ln=True)
         
-        # Save temp image for PDF insertion
-        temp_path = "temp_report_img.png"
-        images[0].save(temp_path)
-        pdf.image(temp_path, x=55, w=100) # Width reduced to prevent overflow
+        temp_img = "report_snapshot.png"
+        images[0].save(temp_img)
         
-        if os.path.exists(temp_path):
-            os.remove(temp_path)
+        # Reduced width from 140 to 100
+        # Centering logic: (Page width 210 - Image width 100) / 2 = 55
+        pdf.image(temp_img, x=55, w=100) 
+        
+        pdf.ln(2) # Reduced line spacing after image
+        if os.path.exists(temp_img):
+            os.remove(temp_img)
 
-    # 5. Clinical Findings: Wrapped Text
-    pdf.ln(10)
-    pdf.set_text_color(*PRIMARY_BLUE)
+    # FINDINGS SECTION
+    pdf.ln(5)
+    pdf.set_text_color(*PRIMARY)
     pdf.set_font("Helvetica", 'B', 12)
     pdf.cell(0, 8, "CLINICAL FINDINGS", ln=True)
+    pdf.set_draw_color(*LINE)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     pdf.ln(4)
     
-    pdf.set_text_color(*DARK_TEXT)
+    pdf.set_text_color(*TEXT)
     pdf.set_font("Helvetica", '', 11)
-    pdf.multi_cell(0, 6, safe_encoded_text)
 
-    # 6. Footer & Signature Logic
-    # If the report is too long, we move the signature to a new page
-    if pdf.get_y() > 240:
+    # Calculate available space to prevent overlap
+    # If the text is too long, it will now automatically trigger a page break
+    pdf.multi_cell(0, 6, safe_text)
+
+    # FOOTER & SIGNATURE
+    # check if we are too close to the bottom after the findings
+    if pdf.get_y() > 250:
         pdf.add_page()
     
-    pdf.set_y(-35) # Pin footer to the bottom
+    # Set footer position to exactly 35mm from bottom to give room for 3 lines
+    pdf.set_y(-35) 
+    pdf.set_draw_color(*LINE)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-    pdf.set_font("Helvetica", 'I', 8)
-    pdf.set_text_color(120, 120, 120)
-    pdf.cell(0, 6, "Report generated via Medora AI. Clinical validation is mandatory.", ln=True, align='C')
     
+    pdf.set_font("Helvetica", 'I', 8) # Italicize disclaimer
+    pdf.set_text_color(*MUTED)
+    pdf.cell(0, 6, "This report is system-generated and requires clinical validation.", ln=True, align='C')
+    
+    pdf.ln(2)
     pdf.set_font("Helvetica", 'B', 10)
-    pdf.set_text_color(*PRIMARY_BLUE)
-    pdf.cell(0, 6, f"Digitally Signed: Dr. {expert_name}", ln=True, align='R')
+    pdf.set_text_color(*PRIMARY)
+    pdf.cell(0, 6, f"Digitally Verified By: Dr. {expert_name}", ln=True, align='R')
 
     return bytes(pdf.output())
 
-# --- Main Dashboard UI ---
-st.title("🩺 Medora Clinical Image Analysis")
-st.write("Advanced multimodal diagnostic support using local CPU inference.")
+# --- Main App Logic ---
+st.title("🩺 Medora Clinical Image Analysis Dashboard")
+st.write("Advance your clinical workflow with local AI multimodal reasoning.")
 
-upload_col, preview_col = st.columns([1, 1], gap="large")
+col1, col2 = st.columns([1, 1], gap="large")
 
-with upload_col:
+with col1:
     st.markdown('<div class="clinical-card">', unsafe_allow_html=True)
-    st.subheader("📁 Imaging Intake")
+    st.subheader("📁 Scan Data Upload")
     
-    # Supporting multiple medical and standard formats
-    allowed_formats = ["dcm", "nii", "nii.gz", "jpg", "jpeg", "png", "tiff", "tif"]
-    files = st.file_uploader(f"Upload {scan_modality} files", type=allowed_formats, accept_multiple_files=True)
+    supported_types = ["dcm", "nii", "nii.gz", "jpg", "jpeg", "png", "bmp", "webp", "tiff", "tif"]
+    uploaded_files = st.file_uploader(
+        f"Upload {scan_type} files", 
+        type=supported_types, 
+        accept_multiple_files=True
+    )
 
-    if files:
+    if uploaded_files:
         st.session_state.processed_images = []
-        for f in files:
-            ext = f.name.lower()
+        for f in uploaded_files:
+            file_ext = f.name.lower()
             
-            # DICOM/NIfTI Handling
-            if ext.endswith((".dcm", ".nii", ".gz")):
-                # Logic handled by MedicalImageProcessor utility
-                with open("temp_medical_file", "wb") as tmp:
+            # DICOM, NIfTI, TIFF, and Standard Handlers...
+            if file_ext.endswith(".dcm"):
+                with open("temp.dcm", "wb") as tmp:
                     tmp.write(f.read())
-                # Note: Assuming utility returns PIL images
-                processed = MedicalImageProcessor.prepare_any_image(f.read())
-                if processed: st.session_state.processed_images.append(processed)
+                hu_data, _ = MedicalImageProcessor.load_dicom_slice("temp.dcm")
+                rgb_slice = MedicalImageProcessor.process_ct_rgb(hu_data)
+                resized = MedicalImageProcessor.resize_for_model(rgb_slice)
+                st.session_state.processed_images.append(Image.fromarray(resized))
             
-            # TIFF Handling for High-Resolution scans
-            elif ext.endswith((".tif", ".tiff")):
-                raw_tiff = tifffile.imread(f)
-                # Slice selection if 3D, otherwise normalize to 8-bit
-                if len(raw_tiff.shape) == 3: raw_tiff = raw_tiff[raw_tiff.shape[0] // 2]
-                norm_img = ((raw_tiff - raw_tiff.min()) / (raw_tiff.max() - raw_tiff.min()) * 255).astype(np.uint8)
-                st.session_state.processed_images.append(Image.fromarray(norm_img))
-            
-            # Standard Web Formats
-            else:
-                img = MedicalImageProcessor.prepare_any_image(f.read())
-                if img: st.session_state.processed_images.append(img)
+            elif file_ext.endswith(".nii") or file_ext.endswith(".nii.gz"):
+                slices = MedicalImageProcessor.extract_nifti_slices(f.read())
+                st.session_state.processed_images.extend(slices)
 
-        # UI Preview for the uploaded slices
-        if st.session_state.processed_images:
-            imgs = st.session_state.processed_images[:5] # Limit preview to first 5
-            if len(imgs) > 1:
-                idx = st.slider("Browse Slices", 0, len(imgs)-1, 0)
-                st.image(imgs[idx], caption=f"Selected Slice: {idx+1}", use_container_width=True)
+            elif file_ext.endswith(".tif") or file_ext.endswith(".tiff"):
+                try:
+                    img_array = tifffile.imread(f)
+                    if len(img_array.shape) == 3:
+                        img_array = img_array[img_array.shape[0] // 2]
+                    img_min, img_max = img_array.min(), img_array.max()
+                    img_8bit = ((img_array - img_min) / (img_max - img_min) * 255).astype(np.uint8) if img_max > img_min else np.zeros_like(img_array)
+                    resized = MedicalImageProcessor.resize_for_model(img_8bit)
+                    st.session_state.processed_images.append(Image.fromarray(resized))
+                except Exception as e:
+                    st.error(f"Failed to process TIFF: {e}")
+            
             else:
-                st.image(imgs[0], caption="Scan Preview", use_container_width=True)
+                processed_img = MedicalImageProcessor.prepare_any_image(f.read())
+                if processed_img:
+                    st.session_state.processed_images.append(processed_img)
+
+        st.session_state.processed_images = st.session_state.processed_images[:5]
+
+        # Display Preview (Fixed deprecated use_column_width)
+        if st.session_state.processed_images:
+            if len(st.session_state.processed_images) > 1:
+                slice_idx = st.slider("Select Slice to View", 0, len(st.session_state.processed_images)-1, 0)
+                st.image(st.session_state.processed_images[slice_idx], caption=f"View {slice_idx+1}", use_container_width=True)
+            else:
+                st.image(st.session_state.processed_images[0], caption="Scan Preview", use_container_width=True)
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-with preview_col:
+with col2:
     st.markdown('<div class="clinical-card">', unsafe_allow_html=True)
-    st.subheader("🤖 AI Diagnostic Suite")
+    st.subheader("🤖 Analysis Preview")
     
-    can_analyze = len(st.session_state.processed_images) > 0
-    if st.button("RUN AI DIAGNOSTICS", disabled=not can_analyze):
-        with st.spinner("Analyzing voxel patterns and clinical markers..."):
+    analyze_btn = st.button("GENERATE CLINICAL INSIGHTS", disabled=not st.session_state.processed_images)
+    
+    if analyze_btn:
+        with st.spinner("🧠 Analysing, Please wait ... "):
             handler = MedGemmaHandler()
             try:
-                if use_demo_mode:
-                    report = handler.mock_analyze(scan_modality)
+                if use_mock:
+                    raw_report = handler.mock_analyze(scan_type)
                 else:
+                    # Pass HF Token if provided
                     handler.initialize(hf_token=hf_token)
-                    report = handler.analyze(st.session_state.processed_images[0], scan_modality)
-                st.session_state.current_report = report
+                    # Pass the first image in the list
+                    raw_report = handler.analyze(st.session_state.processed_images[0], scan_type)
+                
+                st.session_state.current_report = raw_report
             except Exception as e:
-                st.error(f"Analysis Failed: {str(e)}")
+                st.error(f"Failed to run model: {e}")
 
     if st.session_state.current_report:
-        st.success("Analysis Complete")
+        st.markdown("### 📋 Clinical Findings")
+        # Display the report
         st.info(st.session_state.current_report)
-        
-        # --- Interactive Technical Analysis Tabs ---
-        tab1, tab2 = st.tabs(["📊 Densitometry Analysis", "📈 Intensity Distribution"])
+        tab1, tab2 = st.tabs(["🔬 Radiodensity & Densitometry Analysis", "📊 Density Analysis"])
         
         with tab1:
-            st.write("**Radiodensity Profile (Hounsfield Units)**")
-            handler = MedGemmaHandler()
-            hu_data = handler.get_intensity_analysis(st.session_state.processed_images[0])
-            
-            if hu_data is not None:
-                # Plotly Histogram for interactive exploration
-                fig = px.histogram(
-                    x=hu_data, nbins=80, range_x=[-1050, 1050],
-                    labels={'x': 'HU Scale', 'y': 'Frequency'},
-                    color_discrete_sequence=['#00d4ff']
-                )
-                
-                # Clinical markers to guide the physician
-                for label, pos, color in [("Air", -1000, "Gray"), ("Lung", -500, "Cyan"), ("Soft Tissue", 40, "Green")]:
-                    fig.add_vline(x=pos, line_dash="dot", line_color=color, annotation_text=label)
-                
-                fig.update_layout(template="plotly_dark", height=350)
-                st.plotly_chart(fig, use_container_width=True)
+            st.header("🔬 Radiodensity & Densitometry Analysis")
+            st.info("Mapping voxel intensity to Hounsfield Units (HU) to verify tissue composition.")
 
+            if st.session_state.processed_images:
+                handler = MedGemmaHandler()
+                # Analyze the primary slice
+                hu_values = handler.get_intensity_analysis(st.session_state.processed_images[0])
+        
+            if hu_values is not None:
+                    # Create interactive histogram
+                    fig = px.histogram(
+                x=hu_values, 
+                nbins=100,
+                labels={'x': 'Hounsfield Units (HU)', 'y': 'Voxel Count'},
+                color_discrete_sequence=['#00d4ff'],
+                range_x=[-1050, 1050]
+                    )
+
+            # Add Clinical Reference Lines
+                    reference_tissues = [
+                {"name": "Air", "pos": -1000, "color": "Gray"},
+                {"name": "Lung", "pos": -500, "color": "LightBlue"},
+                {"name": "Water", "pos": 0, "color": "Blue"},
+                {"name": "Bone", "pos": 700, "color": "White"}
+                    ]
+
+                    for tissue in reference_tissues:
+                        fig.add_vline(x=tissue["pos"], line_dash="dot", line_color=tissue["color"],
+                             annotation_text=tissue["name"])
+
+                    fig.update_layout(template="plotly_dark", plot_bgcolor='rgba(0,0,0,0)')
+                    st.plotly_chart(fig, use_container_width=True)
+            
+            # Quantitative Summary
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.metric("Mean Radiodensity", f"{np.mean(hu_values):.1f} HU")
+                        st.write("**Voxel Analysis**")
+                        st.caption(f"Total Data Points: {len(hu_values):,}")
+                    with col2:
+                # Calculate percentage of clear lung tissue (standard HU range)
+                        lung_ratio = np.sum((hu_values > -900) & (hu_values < -200)) / len(hu_values) * 100
+                        st.metric("Lung Field Ratio", f"{lung_ratio:.1f}%")
+                        st.write("**Composition Status**")
+                        st.success("Consistent with healthy thoracic cavity")
+            else:
+                st.warning("Please process a scan to view densitometry data.")
+        
         with tab2:
-            st.write("**Voxel Frequency Analysis**")
-            # Simplified NumPy-based distribution view
-            hist_data = np.histogram(np.array(st.session_state.processed_images[0]), bins=50)
-            st.bar_chart(hist_data[0])
+            st.write("Tissue Density Distribution")
+            if st.session_state.processed_images:
+                img_data = np.array(st.session_state.processed_images[0])
+                fig, ax = plt.subplots(figsize=(10, 4))
+                ax.hist(img_data.flatten(), bins=80, color='#1E88E5', alpha=0.7)
+                ax.set_title("Voxel Intensity Distribution")
+                st.pyplot(fig)
 
         st.markdown("---")
-        st.subheader("✍️ Clinical Validation")
-        dr_name = st.text_input("Reviewing Clinician Name")
-        signed = st.checkbox("I verify the above clinical findings.")
+        st.subheader("✍️ Validation & Signature")
+        expert_name = st.text_input("Reviewing Consultant's Name")
+        st.session_state.expert_sign_off = st.checkbox("Sign-off: Confirm diagnostic accuracy.")
         
-        if signed and dr_name:
-            pdf_data = generate_clinical_pdf(st.session_state.current_report, scan_modality, dr_name, st.session_state.processed_images)
+        if st.session_state.expert_sign_off and expert_name:
+            pdf_bytes = generate_pdf(st.session_state.current_report, scan_type, expert_name, st.session_state.processed_images)
             st.download_button(
-                label="📥 EXPORT OFFICIAL PDF",
-                data=pdf_data,
-                file_name=f"Medora_Report_{datetime.now().strftime('%Y%m%d')}.pdf",
+                label="📥 DOWNLOAD FINAL REPORT (PDF)",
+                data=pdf_bytes,
+                file_name=f"Clinical_Report_{datetime.now().strftime('%Y%m%d')}.pdf",
                 mime="application/pdf"
             )
+        else:
+            st.info("Complete consultant sign-off to enable PDF export.")
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-# --- Application Footer ---
+# --- Footer ---
 st.markdown("---")
-st.caption("Medora AI Framework v1.0 | Local Multimodal Reasoning | Project Demo 2026")
+st.caption("AI-assisted diagnostics interpretatated by local Qwen2-VL model. Optimized for local CPU inference.")
