@@ -1,60 +1,413 @@
-/* Clean, High-Contrast Clinical UI */
+/* ═══════════════════════════════════════════════════════════
+   Medora — Clinical Interface Stylesheet
+   Typefaces: DM Sans (body) · DM Mono (data)
+   ═══════════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
 
+/* ── Tokens ─────────────────────────────────────────────── */
 :root {
-    --primary: #2563eb;
-    --text-main: #1e293b;
-    --text-muted: #64748b;
-    --bg-light: #ffffff;
-    --border-color: #e2e8f0;
+    --c-bg:          #f8fafc;
+    --c-surface:     #ffffff;
+    --c-border:      #e2e8f0;
+    --c-border-soft: #f1f5f9;
+
+    --c-primary:     #1d4ed8;
+    --c-primary-dim: #dbeafe;
+
+    --c-text-1:      #0f172a;
+    --c-text-2:      #475569;
+    --c-text-3:      #94a3b8;
+
+    --c-success:     #059669;
+    --c-success-bg:  #ecfdf5;
+    --c-warn:        #d97706;
+    --c-warn-bg:     #fffbeb;
+
+    --radius-sm:  6px;
+    --radius-md:  10px;
+    --radius-lg:  14px;
+
+    --shadow-sm:  0 1px 3px rgba(15,23,42,.06), 0 1px 2px rgba(15,23,42,.04);
+    --shadow-md:  0 4px 12px rgba(15,23,42,.08), 0 2px 4px rgba(15,23,42,.05);
 }
 
+/* ── Base ────────────────────────────────────────────────── */
 .stApp {
-    background-color: var(--bg-light);
-    font-family: 'Inter', sans-serif;
-    color: var(--text-main);
+    background: var(--c-bg) !important;
+    font-family: 'DM Sans', sans-serif !important;
+    color: var(--c-text-1) !important;
 }
 
-/* Clearer Headings */
-h1, h2, h3 {
-    color: var(--text-main) !important;
-    font-weight: 700 !important;
+/* Remove Streamlit's default padding */
+.block-container {
+    padding-top: 1.5rem !important;
+    padding-bottom: 3rem !important;
+    max-width: 1200px !important;
 }
 
-/* Simple Cards */
-.clinical-card {
-    background: white;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 20px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+/* ── Page header ─────────────────────────────────────────── */
+.page-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--c-border);
+    margin-bottom: 1.75rem;
 }
 
-/* Buttons */
-.stButton > button {
-    background-color: var(--primary) !important;
-    color: white !important;
-    border-radius: 6px !important;
-    border: none !important;
+.page-title {
+    font-size: 1.6rem !important;
     font-weight: 600 !important;
+    color: var(--c-text-1) !important;
+    margin: 0 0 0.2rem !important;
+    letter-spacing: -0.02em;
+}
+
+.page-subtitle {
+    font-size: 0.875rem !important;
+    color: var(--c-text-3) !important;
+    margin: 0 !important;
+    font-weight: 400 !important;
+}
+
+/* ── Panels ──────────────────────────────────────────────── */
+.panel {
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius-lg);
+    padding: 1.4rem 1.5rem;
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 1.25rem;
+}
+
+.panel-label {
+    font-size: 0.68rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.1em !important;
+    color: var(--c-text-3) !important;
+    text-transform: uppercase !important;
+    margin: 0 0 0.3rem !important;
+}
+
+.panel-title {
+    font-size: 1.05rem !important;
+    font-weight: 600 !important;
+    color: var(--c-text-1) !important;
+    margin: 0 0 1rem !important;
+    letter-spacing: -0.01em !important;
+}
+
+/* ── Sidebar ─────────────────────────────────────────────── */
+section[data-testid="stSidebar"] {
+    background: var(--c-surface) !important;
+    border-right: 1px solid var(--c-border) !important;
+}
+
+section[data-testid="stSidebar"] > div {
+    padding: 1.4rem 1.25rem !important;
+}
+
+.sidebar-brand {
+    display: flex;
+    align-items: center;
+    /* justify-content: center; */
+    gap: 0.65rem;
+    margin-bottom: 0.3rem;
+}
+ 
+.brand-logo {
+    object-fit: contain;
+    filter: brightness(0) invert(1);
+    opacity: 0.9;
+}
+/* .brand-icon { font-size: 1.3rem; } */
+
+
+.brand-name {
+    /* font-size: 2rem; */
+    font-weight: 600;
+    color: var(--c-text-1);
+    letter-spacing: -0.02em;
+}
+
+.brand-tagline {
+    /* font-size: 0.78rem !important; */
+    color: var(--c-text-3) !important;
+    margin: 0 0 0.25rem !important;
+}
+
+.sidebar-divider {
+    height: 1px;
+    background: var(--c-border);
+    margin: 1rem 0;
+}
+
+.sidebar-section-label {
+    font-size: 0.65rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.1em !important;
+    color: var(--c-text-3) !important;
+    text-transform: uppercase !important;
+    margin: 0 0 0.75rem !important;
+}
+
+/* Status badge */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.78rem;
+    font-weight: 500;
+    padding: 0.35rem 0.75rem;
+    border-radius: 99px;
+}
+
+.status-live {
+    background: var(--c-success-bg);
+    color: var(--c-success);
+}
+
+.status-demo {
+    background: var(--c-warn-bg);
+    color: var(--c-warn);
+}
+
+.status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    display: inline-block;
+}
+
+/* ── Buttons ─────────────────────────────────────────────── */
+.stButton > button {
+    background: var(--c-primary) !important;
+    color: #fff !important;
+    border: none !important;
+    border-radius: var(--radius-md) !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 0.875rem !important;
+    font-weight: 500 !important;
+    padding: 0.6rem 1.25rem !important;
+    letter-spacing: 0.01em !important;
+    transition: opacity 0.15s ease !important;
     width: 100%;
 }
 
-/* Sidebar Branding */
-section[data-testid="stSidebar"] {
-    background-color: #f1f5f9;
-    border-right: 1px solid var(--border-color);
+.stButton > button:hover {
+    opacity: 0.88 !important;
 }
 
-/* High Contrast for Analysis Text */
-.stTextArea textarea {
-    color: #000000 !important;
-    font-family: inherit;
+.stButton > button:disabled {
+    background: var(--c-border) !important;
+    color: var(--c-text-3) !important;
+    cursor: not-allowed !important;
 }
 
-/* Alert Boxes */
+/* Download button — secondary style */
+.stDownloadButton > button {
+    background: var(--c-surface) !important;
+    color: var(--c-primary) !important;
+    border: 1.5px solid var(--c-primary) !important;
+    border-radius: var(--radius-md) !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 0.875rem !important;
+    font-weight: 500 !important;
+    width: 100%;
+}
+
+.stDownloadButton > button:hover {
+    background: var(--c-primary-dim) !important;
+}
+
+/* ── Findings box ────────────────────────────────────────── */
+.findings-box {
+    background: #f8fafc;
+    border: 1px solid var(--c-border);
+    border-left: 3px solid var(--c-primary);
+    border-radius: var(--radius-md);
+    padding: 1rem 1.1rem;
+    font-size: 0.875rem;
+    color: var(--c-text-1);
+    line-height: 1.7;
+    font-family: 'DM Sans', sans-serif;
+    margin-bottom: 1rem;
+}
+
+/* ── Upload placeholder ──────────────────────────────────── */
+.upload-placeholder {
+    background: var(--c-border-soft);
+    border: 1.5px dashed var(--c-border);
+    border-radius: var(--radius-md);
+    padding: 2rem;
+    text-align: center;
+    color: var(--c-text-3);
+    font-size: 0.85rem;
+    margin-top: 0.5rem;
+}
+
+.upload-icon {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    opacity: 0.5;
+}
+
+/* ── Meta line ───────────────────────────────────────────── */
+.meta-line {
+    font-size: 0.78rem !important;
+    color: var(--c-success) !important;
+    font-weight: 500 !important;
+    margin: 0.5rem 0 0 !important;
+}
+
+/* ── Sign-off section ────────────────────────────────────── */
+.signoff-section {
+    border-top: 1px solid var(--c-border);
+    padding-top: 1.1rem;
+    margin-top: 1.1rem;
+}
+
+/* ── Form inputs ─────────────────────────────────────────── */
+.stTextInput > div > div > input {
+    border: 1px solid var(--c-border) !important;
+    border-radius: var(--radius-sm) !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 0.875rem !important;
+    color: var(--c-text-1) !important;
+    background: var(--c-surface) !important;
+    padding: 0.5rem 0.75rem !important;
+    transition: border-color 0.15s !important;
+}
+
+.stTextInput > div > div > input:focus {
+    border-color: var(--c-primary) !important;
+    box-shadow: 0 0 0 3px rgba(29,78,216,.1) !important;
+    outline: none !important;
+}
+
+/* Password field */
+.stTextInput > div > div > input[type="password"] {
+    font-family: 'DM Mono', monospace !important;
+    letter-spacing: 0.05em !important;
+}
+
+/* ── Select boxes ────────────────────────────────────────── */
+.stSelectbox > div > div {
+    border: 1px solid var(--c-border) !important;
+    border-radius: var(--radius-sm) !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 0.875rem !important;
+    background: var(--c-surface) !important;
+}
+
+/* ── Tabs ────────────────────────────────────────────────── */
+.stTabs [data-baseweb="tab-list"] {
+    background: var(--c-border-soft) !important;
+    border-radius: var(--radius-sm) !important;
+    padding: 3px !important;
+    gap: 2px !important;
+    border: none !important;
+}
+
+.stTabs [data-baseweb="tab"] {
+    background: transparent !important;
+    border: none !important;
+    border-radius: calc(var(--radius-sm) - 2px) !important;
+    color: var(--c-text-2) !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 0.825rem !important;
+    font-weight: 500 !important;
+    padding: 0.35rem 0.9rem !important;
+}
+
+.stTabs [aria-selected="true"] {
+    background: var(--c-surface) !important;
+    color: var(--c-text-1) !important;
+    box-shadow: var(--shadow-sm) !important;
+}
+
+/* ── Metrics ─────────────────────────────────────────────── */
+[data-testid="stMetric"] {
+    background: var(--c-border-soft) !important;
+    border: 1px solid var(--c-border) !important;
+    border-radius: var(--radius-md) !important;
+    padding: 0.75rem 1rem !important;
+}
+
+[data-testid="stMetricLabel"] {
+    font-size: 0.75rem !important;
+    color: var(--c-text-3) !important;
+    font-weight: 500 !important;
+}
+
+[data-testid="stMetricValue"] {
+    font-size: 1.3rem !important;
+    color: var(--c-text-1) !important;
+    font-weight: 600 !important;
+    font-family: 'DM Mono', monospace !important;
+}
+
+/* ── Alerts / info boxes ─────────────────────────────────── */
 .stAlert {
-    border-radius: 8px !important;
+    border-radius: var(--radius-md) !important;
+    border: 1px solid var(--c-border) !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 0.875rem !important;
 }
+
+/* ── Slider ──────────────────────────────────────────────── */
+.stSlider > div > div > div > div {
+    background: var(--c-primary) !important;
+}
+
+/* ── Checkbox ────────────────────────────────────────────── */
+.stCheckbox span {
+    font-size: 0.875rem !important;
+    color: var(--c-text-2) !important;
+    font-family: 'DM Sans', sans-serif !important;
+}
+
+/* ── Toggle ──────────────────────────────────────────────── */
+.stToggle span {
+    font-size: 0.875rem !important;
+    font-family: 'DM Sans', sans-serif !important;
+}
+
+/* ── Headings inside Streamlit ───────────────────────────── */
+h1, h2, h3 {
+    font-family: 'DM Sans', sans-serif !important;
+    color: var(--c-text-1) !important;
+    letter-spacing: -0.015em !important;
+}
+
+/* ── Caption / small text ────────────────────────────────── */
+.stCaption, small {
+    font-size: 0.78rem !important;
+    color: var(--c-text-3) !important;
+}
+
+/* ── Footer ──────────────────────────────────────────────── */
+.page-footer {
+    border-top: 1px solid var(--c-border);
+    margin-top: 2rem;
+    padding-top: 1rem;
+    font-size: 0.78rem;
+    color: var(--c-text-3);
+    text-align: center;
+}
+
+/* ── File uploader ───────────────────────────────────────── */
+[data-testid="stFileUploader"] {
+    border: 1.5px dashed var(--c-border) !important;
+    border-radius: var(--radius-md) !important;
+    background: var(--c-border-soft) !important;
+}
+
+[data-testid="stFileUploader"]:hover {
+    border-color: var(--c-primary) !important;
+}
+
+/* Hide Streamlit branding */
+#MainMenu, footer, header { visibility: hidden; }
