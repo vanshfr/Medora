@@ -83,7 +83,8 @@ class MedoraHandler:
                             "type": "text",
                             "text": (
                                 f"Analyze this {scan_type}. "
-                                "Provide a brief 2-sentence clinical impression."
+                                "Provide a brief clinical impression and "
+                                "provide a definitive concluding sentence within 100 words. Ensure the response is complete."
                             ),
                         },
                     ],
@@ -98,7 +99,7 @@ class MedoraHandler:
             )
 
             output_ids = self.model.generate(
-                **inputs, max_new_tokens=60, do_sample=False
+                **inputs, max_new_tokens=128, do_sample=False
             )
 
             # Strip the prompt tokens to keep only the generated portion
