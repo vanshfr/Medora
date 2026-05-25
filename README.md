@@ -2,6 +2,8 @@
 
 Medora is a local AI-powered clinical imaging dashboard built with Streamlit. It enables radiologists and clinicians to upload medical scans, generate AI-assisted diagnostic reports, and export signed PDF reports - all running on local CPU inference with no cloud dependency.
 
+<img width="1919" height="878" alt="image" src="https://github.com/user-attachments/assets/afc39eac-98ce-46e1-b4c5-a10539e977a4" />
+
 ---
 
 ## ✨ Features
